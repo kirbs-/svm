@@ -1,5 +1,8 @@
 import requests
 import os
+import zipfile
+import glob
+import fnmatch
 
 
 class Spark(object):
@@ -27,7 +30,7 @@ class Spark(object):
         :param version: Version number to download.
         :return: None
         """
-        local_filename = os.path.join(Spark.HOME_DIR, Spark.SVM_DIR, 'v{}.zip'.format(version))
+        local_filename = 'v{}.zip'.format(Spark.svm_version_path(version))
         r = requests.get(Spark.spark_versions()['v{}'.format(version)], stream=True)
         os.makedirs(os.path.dirname(local_filename), exist_ok=True)
         with open(local_filename, 'wb') as f:
@@ -36,7 +39,44 @@ class Spark(object):
                     f.write(chunk)
 
     @staticmethod
-    def spark_version_path(version):
-        return os.path.join(Spark.HOME_DIR, Spark.SVM_DIR, 'v{}.zip'.format(version))
+    def svm_version_path(version):
+        """
+        Path to specified spark version. Accepts semantic version numbering.
+        :param version: Spark version as String
+        :return: String.
+        """
+        return os.path.join(Spark.HOME_DIR, Spark.SVM_DIR, 'v{}'.format(version))
+
+    @staticmethod
+    def svm_path():
+        """
+        Path to local Spark verions folder. Defaults to user_home/.svm
+        :return: String
+        """
+        return os.path.join(Spark.HOME_DIR, Spark.SVM_DIR )
+
+    @staticmethod
+    def unzip(filename):
+        with zipfile.ZipFile(filename, "r") as zip_ref:
+            zip_ref.extractall(Spark.svm_path())
+        return True
+
+    @staticmethod
+    def rename_unzipped_folder(version):
+        """
+        Renames unzipped spark version folder to the release tag.
+        :param version: version from release tag.
+        :return:
+        """
+
+        for filename in os.listdir(Spark.svm_path()):
+            if fnmatch.fnmatch(filename, 'apache-spark-*'):
+                return os.rename(os.path.join(Spark.svm_path(), filename), Spark.svm_version_path(version))
+
+        raise SparkError("Unable to find unzipped Spark folder in {}". format(Spark.svm_path()))
 
 
+class SparkError(AssertionError):
+
+    def __init__(self, *args, **kwargs):
+        AssertionError.__init__(self, *args, **kwargs)
