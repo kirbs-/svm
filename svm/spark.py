@@ -1,8 +1,9 @@
 import requests
 import os
 import zipfile
-import glob
+import subprocess
 import fnmatch
+import stat
 
 
 class Spark(object):
@@ -24,19 +25,58 @@ class Spark(object):
             print("[ ] {}".format(version[1:]))
 
     @staticmethod
-    def download(version):
+    def download(url, localfile):
+        r = requests.get(url, stream=True)
+        os.makedirs(os.path.dirname(localfile), exist_ok=True)
+        with open(localfile, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=1024):
+                if chunk:  # filter out keep-alive new chunks
+                    f.write(chunk)
+
+    @staticmethod
+    def has_java():
+        return b'Runtime Environment' in subprocess.check_output(["java", "-version"], stderr=subprocess.STDOUT)
+
+    @staticmethod
+    def has_maven():
+        return b'Apache Maven 3' in subprocess.check_output(["mvn", "-v"], stderr=subprocess.STDOUT)
+
+    @staticmethod
+    def check_source_install_dependencies():
+        if not Spark.has_java():
+            raise SparkInstallationError('Spark requires Java. Please install before continuing.')
+
+        if not Spark.has_maven():
+            raise SparkInstallationError('Installing from source requires Apache Maven. Please install before continuing.')
+
+        return True
+
+    @staticmethod
+    def install(version):
+        # Spark.check_source_install_dependencies()
+        Spark.download_source(version)
+        Spark.unzip(Spark.svm_version_path(version) + '.zip')
+        Spark.rename_unzipped_folder(version)
+        Spark.build_from_source(version)
+
+    @staticmethod
+    def build_from_source(version, **kwargs):
+        mvn = os.path.join(Spark.svm_version_path(version), 'build', 'mvn')
+        st = os.stat(mvn)
+        os.chmod(mvn, st.st_mode | stat.S_IEXEC)
+        p = subprocess.Popen([mvn, '-DskipTests', 'clean', 'package'], cwd=Spark.svm_version_path(version))
+        p.wait()
+        return p.returncode
+
+    @staticmethod
+    def download_source(version):
         """
         Download Spark version. Uses same name as release tag without the leading 'v'.
         :param version: Version number to download.
         :return: None
         """
         local_filename = 'v{}.zip'.format(Spark.svm_version_path(version))
-        r = requests.get(Spark.spark_versions()['v{}'.format(version)], stream=True)
-        os.makedirs(os.path.dirname(local_filename), exist_ok=True)
-        with open(local_filename, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=1024):
-                if chunk:  # filter out keep-alive new chunks
-                    f.write(chunk)
+        Spark.download(Spark.spark_versions()['v{}'.format(version)], local_filename)
 
     @staticmethod
     def svm_version_path(version):
@@ -73,10 +113,10 @@ class Spark(object):
             if fnmatch.fnmatch(filename, 'apache-spark-*'):
                 return os.rename(os.path.join(Spark.svm_path(), filename), Spark.svm_version_path(version))
 
-        raise SparkError("Unable to find unzipped Spark folder in {}". format(Spark.svm_path()))
+        raise SparkInstallationError("Unable to find unzipped Spark folder in {}". format(Spark.svm_path()))
 
 
-class SparkError(AssertionError):
+class SparkInstallationError(AssertionError):
 
     def __init__(self, *args, **kwargs):
         AssertionError.__init__(self, *args, **kwargs)
