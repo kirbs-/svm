@@ -11,6 +11,7 @@ class Spark(object):
     SPARK_REPO_URL = 'https://api.github.com/repos/apache/spark'
     HOME_DIR = os.path.expanduser('~')
     SVM_DIR = '.svm'
+    SVM_SPARK_DIR = 'active_spark'
 
     @classmethod
     def spark_versions(cls):
@@ -45,7 +46,7 @@ class Spark(object):
 
     @staticmethod
     def install(version):
-        # Spark.check_source_install_dependencies()
+        Spark.check_source_install_dependencies()
         Spark.download_source(version)
         Spark.unzip(Spark.svm_version_path(version) + '.zip')
         Spark.rename_unzipped_folder(version)
@@ -53,6 +54,7 @@ class Spark(object):
 
     @staticmethod
     def activate_spark(version, **kwargs):
+        Spark.check_svm_spark_dir_exists()
         path = '/usr/local/bin'
         spark_version_bin_path = os.path.join(Spark.svm_version_path(version), 'bin')
         relink_attempted = kwargs.get('relink_attempted', False)
@@ -72,8 +74,8 @@ class Spark(object):
             Spark.deactivate_spark(version)
             Spark.activate_spark(version, relink_attempted=True)
 
-        spark_version_path = os.path.join(Spark.svm_version_path(version))
-        active_spark_path = os.path.join(Spark.svm_path(), 'active_spark')
+        spark_version_path = Spark.svm_version_path(version)
+        active_spark_path = Spark.svm_spark_path()
         try:
             for f in os.listdir(spark_version_path):
                 spark_cmd_file = os.path.join(spark_version_path, f)
@@ -95,13 +97,23 @@ class Spark(object):
             except FileNotFoundError:
                 pass
 
-        spark_version_path = os.path.join(Spark.svm_version_path(version))
-        active_spark_path = os.path.join(Spark.svm_path(), 'active_spark')
+        spark_version_path = Spark.svm_version_path(version)
+        active_spark_path = Spark.svm_spark_path()
         for f in os.listdir(spark_version_path):
             try:
                 os.unlink(os.path.join(active_spark_path, f))
             except FileNotFoundError:
                 pass
+
+    @staticmethod
+    def svm_spark_path():
+        return os.path.join(Spark.svm_path(), Spark.SVM_SPARK_DIR)
+
+    @staticmethod
+    def check_svm_spark_dir_exists():
+        svm_spark_dir = Spark.svm_spark_path()
+        if not os.path.exists(svm_spark_dir):
+            os.mkdir(svm_spark_dir)
 
     @staticmethod
     def build_from_source(version, **kwargs):
@@ -119,6 +131,11 @@ class Spark(object):
 
     @staticmethod
     def chmod_add_excute(filename):
+        """
+        Adds execute permission to file.
+        :param filename:
+        :return:
+        """
         st = os.stat(filename)
         os.chmod(filename, st.st_mode | stat.S_IEXEC)
 
@@ -151,6 +168,11 @@ class Spark(object):
 
     @staticmethod
     def unzip(filename):
+        """
+        Unzips specified file into ~/.svm
+        :param filename:
+        :return:
+        """
         with zipfile.ZipFile(filename, "r") as zip_ref:
             zip_ref.extractall(Spark.svm_path())
         return True
