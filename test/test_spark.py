@@ -1,6 +1,5 @@
 from nose.tools import *
 import svm.spark as svm
-import os.path
 import os
 
 
@@ -29,11 +28,18 @@ class TestSpark(object):
     def test_spark_java_check(self):
         assert(svm.Spark.has_java())
 
-    def test_spark_maven_check(self):
-        assert(svm.Spark.has_maven())
-
     def test_spark_source_install(self):
         svm.Spark.install('2.2.0')
 
     def test_source_build(self):
         svm.Spark.build_from_source('2.2.0')
+
+    def test_activate_spark(self):
+        svm.Spark.activate_spark('2.2.0')
+        pyspark_file = os.path.join(os.sep,'usr','local','bin','pyspark')
+        assert(os.path.exists(pyspark_file))
+
+    def test_deactivate_spark(self):
+        svm.Spark.deactivate_spark('2.2.0')
+
+
