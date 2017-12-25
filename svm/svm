@@ -18,7 +18,7 @@ parser.add_argument('-i','--install',
 options = parser.parse_args()
 
 if options.activate:
-    print("activating".format(options.activate))
+    svm.activate_spark(options.activate)
 
 if options.deactivate:
     svm.deactivate_spark()
@@ -28,3 +28,8 @@ if options.list:
 
 if options.install:
     svm.install(options.install)
+
+if not options.activate and not options.deactivate and not options.list and not options.install:
+    svm.list_installed_versions()
+
+print(options)

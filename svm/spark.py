@@ -4,6 +4,7 @@ import zipfile
 import subprocess
 import fnmatch
 import stat
+import re
 
 
 class Spark(object):
@@ -24,6 +25,17 @@ class Spark(object):
     def print_version_list():
         for version in sorted(Spark.spark_versions()):
             print("[ ] {}".format(version[1:]))
+
+    @staticmethod
+    def list_installed_versions():
+        versions = []
+        for f in os.listdir(Spark.svm_path()):
+            regex = re.match('^v([\d.]{5})$', f)
+            if regex:
+                versions.append(regex.groups()[0])
+
+        for version in sorted(versions):
+            print(version)
 
     @staticmethod
     def download(url, localfile):
