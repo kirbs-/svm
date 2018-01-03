@@ -12,13 +12,15 @@ List official Spark versions
 
 Install specific version
 
-`svm install 2.2.1`
+`svm --install 2.2.1`
 
 Activate specified version (must be installed first)
 
-`svm activate 2.2.1`
+`svm --activate 2.2.1`
 
 Disable 
+
+`svm --deactivate`
 
 # How this works
 svm installs Spark versions into the local user's home directory in .svm folder. svm then symlinks .svm/active_spark to the version directory you want active.
