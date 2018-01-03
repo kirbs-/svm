@@ -4,15 +4,21 @@ import argparse
 from svm.spark import Spark as svm
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-a','--activate'
+parser.add_argument('-a','--activate',
+                    metavar='version',
+                    help='Activate specified version.'
                     )
 parser.add_argument('-d','--deactivate',
-                    action='store_true'
+                    action='store_true',
+                    help='Deactivates current version.'
                     )
 parser.add_argument('-l','--list',
-                    action='store_true'
+                    action='store_true',
+                    help='Lists available Spark versions from GitHub.'
                     )
 parser.add_argument('-i','--install',
+                    metavar='version',
+                    help='Install specified Spark version.'
                     )
 
 options = parser.parse_args()
@@ -30,6 +36,4 @@ if options.install:
     svm.install(options.install)
 
 if not options.activate and not options.deactivate and not options.list and not options.install:
-    svm.list_installed_versions()
-
-print(options)
+    svm.print_installed_version_list()

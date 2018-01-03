@@ -5,6 +5,8 @@ import subprocess
 import fnmatch
 import stat
 import re
+import xmltodict
+from colorama import Fore, Back, Style, init
 
 
 class Spark(object):
@@ -12,19 +14,30 @@ class Spark(object):
     SPARK_REPO_URL = 'https://api.github.com/repos/apache/spark'
     HOME_DIR = os.path.expanduser('~')
     SVM_DIR = '.svm'
-    SVM_SPARK_DIR = 'active_spark'
+    SVM_ACTIVE_SPARK_DIR = 'active_spark'
+    init()
 
     @classmethod
     def spark_versions(cls):
         if not cls._spark_versions:
             cls._spark_versions = {v['name']: v['zipball_url'] for v in
                                    requests.get(Spark.SPARK_REPO_URL + '/tags').json()}
-        return cls._spark_versions
+        return sorted(cls._spark_versions)
 
     @staticmethod
     def print_version_list():
-        for version in sorted(Spark.spark_versions()):
-            print("[ ] {}".format(version[1:]))
+        installed_versions = Spark.list_installed_versions()
+        active_version = Spark.active_version()
+        print("\nApache Spark Available Versions\n")
+        for version in Spark.spark_versions():
+            if version[1:] in installed_versions:
+                if version[1:] == active_version:
+                    print(Fore.GREEN + "   [*] {}".format(version[1:]))
+                else:
+                    print(Fore.GREEN + "   [ ] {}".format(version[1:]))
+            else:
+                print("   [ ] {}".format(version[1:]))
+            print(Style.RESET_ALL)
 
     @staticmethod
     def list_installed_versions():
@@ -34,8 +47,25 @@ class Spark(object):
             if regex:
                 versions.append(regex.groups()[0])
 
-        for version in sorted(versions):
-            print(version)
+        return sorted(versions)
+
+    @staticmethod
+    def print_installed_version_list():
+        versions = Spark.list_installed_versions()
+        active_version = Spark.active_version()
+        print("\nApache Spark Versions (installed at {})\n".format(Spark.svm_path()))
+        for version in versions:
+            if version == active_version:
+                print(Fore.GREEN + "   [*] {}".format(version))
+            else:
+                print(Fore.GREEN + "   [ ] {}".format(version))
+        print(Style.RESET_ALL + "\n   * Active")
+
+    @staticmethod
+    def active_version():
+        with open(os.path.join(Spark.svm_spark_path(), 'pom.xml')) as f:
+            pom_file = xmltodict.parse(f.read())
+            return pom_file['project']['version']
 
     @staticmethod
     def download(url, localfile):
@@ -119,7 +149,7 @@ class Spark(object):
 
     @staticmethod
     def svm_spark_path():
-        return os.path.join(Spark.svm_path(), Spark.SVM_SPARK_DIR)
+        return os.path.join(Spark.svm_path(), Spark.SVM_ACTIVE_SPARK_DIR)
 
     @staticmethod
     def check_svm_spark_dir_exists():
